@@ -3,4 +3,5 @@ streamlit-option-menu
 pandas
 plotly
 scikit-surprise
+scikit-learn
 numpy<2.0
