@@ -90,43 +90,22 @@ if selected == "Dashboard":
         df_monthly_sum = df.groupby('month_year')['payment_value'].sum().reset_index()
         fig_line = px.line(df_monthly_sum, x='month_year', y='payment_value', markers=True, template="plotly_white")
         st.plotly_chart(fig_line, use_container_width=True)
+        
+    with col2: # SỬA LỖI LỀ Ở ĐÂY
+            st.subheader("📍 Top 5 Bang")
+            state_map = {'SP': 'São Paulo', 'RJ': 'Rio de Janeiro', 'MG': 'Minas Gerais', 'RS': 'Rio Grande do Sul', 'PR': 'Paraná'}
+            df_state = df.groupby('customer_state')['payment_value'].sum().nlargest(5).reset_index()
+            df_state['State Name'] = df_state['customer_state'].map(state_map).fillna(df_state['customer_state'])
 
-  with col2:
-    st.subheader("📍 Top 5 Bang đóng góp doanh thu")
-    
-    # 1. Chuẩn bị dữ liệu và Mapping tên bang cho chú giải đẹp hơn
-    state_map = {
-        'SP': 'São Paulo',
-        'RJ': 'Rio de Janeiro',
-        'MG': 'Minas Gerais',
-        'RS': 'Rio Grande do Sul',
-        'PR': 'Paraná'
-    }
-    
-    df_state = df.groupby('customer_state')['payment_value'].sum().nlargest(5).reset_index()
-    # Thêm cột tên đầy đủ để hiển thị trong chú thích (Legend)
-    df_state['State Name'] = df_state['customer_state'].map(state_map).fillna(df_state['customer_state'])
+            fig_bar = px.bar(df_state, x='customer_state', y='payment_value', color='State Name', 
+                             template="plotly_white", labels={'customer_state': 'Bang', 'payment_value': 'Doanh thu'})
+            fig_bar.update_layout(legend=dict(orientation="h", yanchor="bottom", y=-0.5, xanchor="center", x=0.5))
+            st.plotly_chart(fig_bar, use_container_width=True)
+            
+            top_1 = df_state.iloc[0]['State Name']
+            st.info(f"**Nhận xét:** Bang **{top_1}** dẫn đầu vượt trội về doanh thu.")
 
-    # 2. Vẽ biểu đồ với tên đầy đủ ở phần chú giải (color)
-    fig_bar = px.bar(
-        df_state, 
-        x='customer_state', 
-        y='payment_value', 
-        color='State Name',  # Hiển thị tên đầy đủ ở phần chú thích bên phải
-        labels={'payment_value': 'Doanh thu', 'customer_state': 'Mã Bang', 'State Name': 'Tên Bang'},
-        template="plotly_white"
-    )
-    
-    # Tinh chỉnh vị trí chú giải
-    fig_bar.update_layout(legend=dict(orientation="h", yanchor="bottom", y=-0.5, xanchor="center", x=0.5))
-    
-    st.plotly_chart(fig_bar, use_container_width=True)
-
-    # 3. Nhận xét sơ bộ
-    top_1_state = df_state.iloc[0]['State Name']
-    st.info(f"**Nhận xét:** Bang **{top_1_state}** dẫn đầu vượt trội về doanh thu, cho thấy sự tập trung thị trường cực lớn tại khu vực này. Doanh nghiệp nên tập trung kho bãi và vận chuyển tại đây để tối ưu chi phí.")
-
-    st.markdown("---")
+        st.markdown("---")
 
     # --- PHẦN 2: KẾT QUẢ CLUSTERING (Sử dụng file rfm_clustered.csv) ---
     st.subheader("👥 Kết quả Phân cụm Khách hàng (K-Means)")
