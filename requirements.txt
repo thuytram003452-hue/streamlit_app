@@ -2,3 +2,5 @@ streamlit
 streamlit-option-menu
 pandas
 plotly
+scikit-surprise
+numpy<2.0
