@@ -92,10 +92,52 @@ if selected == "Dashboard":
         st.plotly_chart(fig_line, use_container_width=True)
 
     with col2:
-        st.subheader("📍 Top 5 Bang")
-        df_state = df.groupby('customer_state')['payment_value'].sum().nlargest(5).reset_index()
-        fig_bar = px.bar(df_state, x='customer_state', y='payment_value', color='customer_state')
-        st.plotly_chart(fig_bar, use_container_width=True)
+    st.subheader("📍 Top 5 Bang có doanh thu cao nhất")
+    
+    # 1. Tạo từ điển ánh xạ mã bang sang tên đầy đủ (để phần chú giải ghi rõ tên)
+    state_map = {
+        'SP': 'São Paulo',
+        'RJ': 'Rio de Janeiro',
+        'MG': 'Minas Gerais',
+        'RS': 'Rio Grande do Sul',
+        'PR': 'Paraná',
+        'SC': 'Santa Catarina',
+        'BA': 'Bahia',
+        'DF': 'Distrito Federal'
+    }
+    
+    # 2. Xử lý dữ liệu
+    df_state = df.groupby('customer_state')['payment_value'].sum().nlargest(5).reset_index()
+    
+    # Thêm cột tên bang đầy đủ để hiển thị trong Legend (chú giải)
+    df_state['full_state_name'] = df_state['customer_state'].map(state_map).fillna(df_state['customer_state'])
+
+    # 3. Vẽ biểu đồ Plotly
+    fig_bar = px.bar(
+        df_state, 
+        x='customer_state', 
+        y='payment_value', 
+        color='full_state_name',  # Dùng tên đầy đủ để phân loại màu và hiện chú giải
+        text_auto='.2s',          # Hiển thị con số rút gọn ngay trên đầu cột (vd: 5.2M)
+        labels={
+            'customer_state': 'Mã Bang',
+            'payment_value': 'Doanh thu (BRL)',
+            'full_state_name': 'Tên Bang'
+        },
+        template="plotly_white"
+    )
+    
+    st.plotly_chart(fig_bar, use_container_width=True)
+
+    # 4. Nhận xét sơ bộ tự động (Dynamic Insight)
+    top_1_state = df_state.iloc[0]['full_state_name']
+    top_1_val = df_state.iloc[0]['payment_value']
+    total_revenue = df['payment_value'].sum()
+    perc = (top_1_val / total_revenue) * 100
+
+    st.write(f"**Nhận xét:**")
+    st.caption(f"Thị trường tập trung cực lớn tại **{top_1_state}**, chiếm khoảng **{perc:.1f}%** tổng doanh thu của top các bang. "
+               f"Điều này cho thấy sự chênh lệch đáng kể về sức mua giữa khu vực Đông Nam và các phần còn lại của Brazil.")
 
     st.markdown("---")
 
