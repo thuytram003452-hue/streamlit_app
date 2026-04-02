@@ -72,6 +72,20 @@ def load_data():
 
 df, df_rfm = load_data()
 
+# Đoạn code chuẩn để load model trong app.py
+@st.cache_resource
+def load_recommender_assets():
+    from surprise import dump # Import trực tiếp ở đây để tránh lỗi khởi tạo
+    try:
+        # Load model SVD
+        _, model = dump.load('svd_model.pkl')
+        # Load danh sách sản phẩm
+        p_list = pd.read_csv('product_list.csv')['product_id'].tolist()
+        return model, p_list
+    except Exception as e:
+        st.error(f"Lỗi: {e}")
+        return None, None
+        
 # --- MAIN BODY ROUTING ---
 if selected == "Dashboard":
     st.header("📊 Tổng quan Thị trường & Phân cụm Khách hàng")
