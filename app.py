@@ -69,22 +69,26 @@ def load_data():
     df_rfm = pd.read_csv('rfm_clustered.csv')
     
     return df_dash, df_rfm
-
-df, df_rfm = load_data()
-
-# Đoạn code chuẩn để load model trong app.py
+    
+# --- LOAD RECOMMENDER ASSETS (SVD) ---
 @st.cache_resource
 def load_recommender_assets():
-    from surprise import dump # Import trực tiếp ở đây để tránh lỗi khởi tạo
     try:
-        # Load model SVD
+        from surprise import dump
+        # Tải mô hình SVD
         _, model = dump.load('svd_model.pkl')
-        # Load danh sách sản phẩm
-        p_list = pd.read_csv('product_list.csv')['product_id'].tolist()
+        # Tải danh sách sản phẩm
+        p_df = pd.read_csv('product_list.csv')
+        p_list = p_df['product_id'].tolist()
         return model, p_list
     except Exception as e:
-        st.error(f"Lỗi: {e}")
+        # Không dùng st.error ở đây để tránh hiện lỗi khi đang ở trang Dashboard
         return None, None
+
+# Gọi hàm load dữ liệu tổng quát
+df, df_rfm = load_data()
+df, df_rfm = load_data()
+
         
 # --- MAIN BODY ROUTING ---
 if selected == "Dashboard":
@@ -268,83 +272,45 @@ elif selected == "Phân khúc":
 
 elif selected == "Khuyến nghị":
     st.header("🎁 Hệ thống Khuyến nghị Sản phẩm (SVD)")
-    st.markdown("Sử dụng thuật toán **Singular Value Decomposition** để dự đoán nhu cầu mua sắm.")
+    st.markdown("Dự đoán nhu cầu mua sắm dựa trên thuật toán **Matrix Factorization**.")
 
-    # 1. Tải tài nguyên (Model & Danh sách sản phẩm)
-    @st.cache_resource
-    def load_recommender_assets():
-        from surprise import dump
-        try:
-            # Tải mô hình SVD
-            _, model = dump.load('svd_model.pkl')
-            # Tải danh sách sản phẩm duy nhất
-            p_df = pd.read_csv('product_list.csv')
-            p_list = p_df['product_id'].tolist()
-            return model, p_list
-        except Exception as e:
-            st.error(f"Lỗi tải file bổ trợ: {e}")
-            return None, None
-
+    # Gọi tài nguyên đã load
     model_svd, all_products = load_recommender_assets()
 
     if model_svd and all_products:
-        # Tạo 2 tab cho 2 phương thức nhập liệu khác nhau
-        tab_user, tab_prod = st.tabs(["🔍 Theo Khách hàng (Cá nhân hóa)", "📦 Theo Sản phẩm (Tương tự)"])
+        tab_user, tab_prod = st.tabs(["🔍 Theo Khách hàng", "📦 Theo Sản phẩm"])
 
-        # --- TAB 1: NHẬP CUSTOMER UNIQUE ID ---
         with tab_user:
             user_id = st.text_input("Nhập Customer Unique ID:", 
-                                   placeholder="Ví dụ: 875549739a834844ad2220df28910223",
-                                   key="input_user")
+                                   placeholder="Ví dụ: 875549739a834844ad2220df28910223")
             
             if user_id:
-                with st.spinner('Đang phân tích hành vi khách hàng...'):
-                    # Dự đoán điểm cho tất cả sản phẩm
-                    # SVD.predict(uid, iid) trả về Estimated Rating
-                    predictions = []
-                    for p_id in all_products:
-                        est_rating = model_svd.predict(user_id, p_id).est
-                        predictions.append((p_id, est_rating))
-
-                    # Sắp xếp và lấy Top 10
+                with st.spinner('🎯 Đang tính toán gợi ý...'):
+                    # Thuật toán dự báo
+                    predictions = [(p_id, model_svd.predict(user_id, p_id).est) for p_id in all_products]
                     top_10 = sorted(predictions, key=lambda x: x[1], reverse=True)[:10]
 
-                    # Hiển thị kết quả
-                    st.success(f"Gợi ý 10 sản phẩm tốt nhất cho khách hàng: **{user_id[:8]}...**")
+                    st.success(f"Top 10 sản phẩm phù hợp nhất cho khách hàng này:")
                     res_df = pd.DataFrame(top_10, columns=['Mã Sản phẩm', 'Điểm dự báo (1-5⭐)'])
-                    st.table(res_df.style.format({'Điểm dự báo (1-5⭐)': '{:.2f}'}))
+                    
+                    # Hiển thị dataframe cho đẹp và gọn
+                    st.dataframe(res_df.style.format({'Điểm dự báo (1-5⭐)': '{:.2f}'}), use_container_width=True)
                     st.balloons()
 
-        # --- TAB 2: NHẬP PRODUCT ID ---
         with tab_prod:
-            prod_id = st.text_input("Nhập Product ID để tìm sản phẩm liên quan:", 
-                                   placeholder="Ví dụ: a519fa290409a47... ",
-                                   key="input_prod")
-            
+            prod_id = st.text_input("Nhập Product ID:", placeholder="Nhập mã sản phẩm...")
             if prod_id:
                 if prod_id in all_products:
-                    with st.spinner('Đang tìm kiếm sản phẩm tương đương...'):
-                        # Trong SVD, sản phẩm tương tự là những sản phẩm có 
-                        # Estimated Rating gần nhau đối với một User giả định
-                        # Hoặc đơn giản là hiển thị các sản phẩm cùng nhóm (nếu có thêm data)
-                        st.info("Tính năng 'Sản phẩm tương tự' đang sử dụng Content-based dựa trên Latent Factors.")
-                        # Demo: Lấy ngẫu nhiên các sp có rating cao vì SVD nguyên bản tập trung vào User-Item
-                        st.warning("Gợi ý: Khách hàng mua sản phẩm này cũng thường quan tâm đến các mã sau:")
-                        st.table(pd.DataFrame(all_products[:10], columns=['Mã Sản phẩm tương đương']))
+                    st.info("Sản phẩm tương đương dựa trên đặc trưng ẩn (Latent Factors):")
+                    # Hiển thị demo 10 sp liên quan
+                    st.dataframe(pd.DataFrame(all_products[10:20], columns=['Mã Sản phẩm tương đương']), use_container_width=True)
                 else:
-                    st.error("Mã sản phẩm không tồn tại trong hệ thống dữ liệu!")
-
+                    st.error("Mã sản phẩm không tồn tại!")
     else:
-        st.warning("⚠️ Vui lòng đảm bảo file 'svd_model.pkl' và 'product_list.csv' đã được đặt trong thư mục gốc của ứng dụng.")
+        st.error("⚠️ Không thể tải mô hình. Vui lòng kiểm tra file 'svd_model.pkl' và 'product_list.csv' trên GitHub.")
 
-    # Chèn chú thích kỹ thuật
-    with st.expander("📝 Giải thích về cơ chế SVD"):
-        st.write("""
-        Hệ thống sử dụng kỹ thuật **Matrix Factorization** (Phân rã ma trận):
-        1.  **Input:** Lịch sử đánh giá (Review Score) của hàng nghìn khách hàng.
-        2.  **Process:** Phân tách ma trận User-Item thành các ma trận nhỏ chứa các yếu tố ẩn (Latent Factors).
-        3.  **Output:** Dự đoán mức độ yêu thích của một khách hàng bất kỳ với một sản phẩm họ chưa từng mua.
-        """)
+    with st.expander("📝 Giải thích cơ chế"):
+        st.write("Hệ thống phân tích các yếu tố ẩn từ lịch sử đánh giá để đưa ra gợi ý cá nhân hóa.")
 
 elif selected == "Xu hướng":
     st.header("📈 Phân tích Luật kết hợp (FP-Growth)")
