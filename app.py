@@ -2,6 +2,10 @@ import streamlit as st
 from streamlit_option_menu import option_menu
 import pandas as pd
 import plotly.express as px
+try:
+    from surprise import dump
+except ImportError:
+    st.error("Thiếu thư viện 'scikit-surprise'. Hãy chạy: pip install scikit-surprise")
 # import các hàm tự viết từ utils.py
 # from utils import load_model, perform_clustering, get_recommendations, train_models
 
