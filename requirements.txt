@@ -2,6 +2,7 @@ streamlit
 streamlit-option-menu
 pandas
 plotly
-scikit-surprise
 scikit-learn
-numpy<2.0
+setuptools
+numpy==1.26.4
+scikit-surprise==1.1.4
